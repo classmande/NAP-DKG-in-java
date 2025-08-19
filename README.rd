@@ -6,11 +6,11 @@
 
 ## Run everything
 ```bash
-git clone https://…/nap-dkg.git
-cd nap-dkg
+git clone https://github.com/classmande/NAP-DKG-in-java.git
 cd DHPVSS-in-java
 npx json-server --watch db.json --port 3003
-run QuickBench1
 
-
-
+Run QuickBench1.java for 
+quick benchmark with N = 10 
+(Simulating the whole protocol with all Participants Asyncronology using Javas Threads 
+(allows a program to operate more efficiently by doing multiple things at the same time)).
