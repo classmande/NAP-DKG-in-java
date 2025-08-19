@@ -153,6 +153,9 @@ public class NizkDlEqProof {
 
         BigInteger e = prf.getChallenge();
         BigInteger z = prf.getResponse();
+        x = x.normalize();
+        h = h.normalize();
+        y = y.normalize();
 
         // 1) a₁' = z·G + e·x
         ECPoint a1p = G.multiply(z).add(x.multiply(e)).normalize();

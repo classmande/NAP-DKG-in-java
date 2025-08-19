@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "QuickBench1",
+            "request": "launch",
+            "mainClass": "org.example.napdkg.cli.QuickBench1",
+            "projectName": "app"
+        },
+        {
+            "type": "java",
             "name": "SingleChallengeDKGTest",
             "request": "launch",
             "mainClass": "org.example.napdkg.cli.SingleChallengeDKGTest",

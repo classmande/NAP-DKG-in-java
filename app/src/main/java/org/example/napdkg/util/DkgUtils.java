@@ -108,47 +108,100 @@ public final class DkgUtils {
         }
     }
 
-    // public static Aggregation aggregateFirstRound(
-    // DkgContext ctx,
-    // List<PublicKeysWithProofs> pubs,
-    // ECPoint[] Cij,
-    // BigInteger[] CHat) {
-    // BigInteger p = ctx.getOrder();
-    // BigInteger[] α = ctx.getAlphas(), v = ctx.getVs();
-    // ECPoint U = ctx.getGenerator().getCurve().getInfinity(),
-    // V = U;
-    // ECPoint pki = pubs.get(POLL_MS).getPublicKey();
-    // ECPoint
+    // 1) Arrival-order list (exactly what dealers used when constructing E[])
+    public static List<PublicKeysWithProofs> fetchEphemeralPubsByArrival(
+            DkgContext ctx, PbbClient pbb) throws Exception {
+        List<EphemeralKeyDTO> dtos = pbb.fetch("ephemeralKeys", EphemeralKeyDTO.class);
 
-    // for (int j = 1; j <= pubs.size(); j++) {
-    // BigInteger f = EvaluationTools.evaluatePolynomial(
-    // HashingTools.deriveFirstRoundPoly(ctx,
-    // pki,
-    // pubs.getPublicKey(),
+        List<PublicKeysWithProofs> pubs = new ArrayList<>(dtos.size());
+        for (EphemeralKeyDTO dto : dtos) {
+            ECPoint P = ctx.getGenerator().getCurve()
+                    .decodePoint(org.bouncycastle.util.encoders.Hex.decode(dto.publicKey))
+                    .normalize();
 
-    // Cij,
-    // CHat,
-    // pubs.size(),
-    // ctx.getThreshold()),
-    // α[j], p);
-    // BigInteger w = v[j - 1].multiply(f).mod(p);
-    // U = U.add(pubs.get(j - 1).getPublicKey().multiply(w)).normalize();
-    // V = V.add(Cij[j - 1].multiply(w)).normalize();
-    // }
-    // return new Aggregation(U, V);
-    // }
+            String[] parts = dto.schnorrProof.split("\\|");
+            if (parts.length != 2)
+                throw new IllegalStateException("Bad schnorrProof format");
+            BigInteger c = new BigInteger(parts[0], 16);
+            BigInteger z = new BigInteger(parts[1], 16);
+            NizkDlProof prf = new NizkDlProof(c, z);
 
-    // …plus a little helper to extract ECPoint[] from the list…
-    private static ECPoint[] toArray(List<PublicKeysWithProofs> pubs) {
-        ECPoint[] arr = new ECPoint[pubs.size()];
-        for (int i = 0; i < arr.length; i++)
-            arr[i] = pubs.get(i).getPublicKey();
-        return arr;
+            if (!NizkDlProof.verifyProof(ctx, P, prf))
+                throw new IllegalStateException("Invalid Schnorr proof for partyIndex=" + dto.partyIndex);
+
+            pubs.add(new PublicKeysWithProofs(dto.partyIndex, P, prf));
+        }
+        // IMPORTANT: do NOT sort here; preserve PBB arrival order
+        return pubs;
     }
+
+    // 2) Direct lookup by party index (for Θ verification)
+    public static ECPoint getEphemeralPubByIndex(
+            DkgContext ctx, PbbClient pbb, int partyIndex) throws Exception {
+        for (EphemeralKeyDTO dto : pbb.fetch("ephemeralKeys", EphemeralKeyDTO.class)) {
+            if (dto.partyIndex == partyIndex) {
+                ECPoint P = ctx.getGenerator().getCurve()
+                        .decodePoint(org.bouncycastle.util.encoders.Hex.decode(dto.publicKey))
+                        .normalize();
+
+                String[] parts = dto.schnorrProof.split("\\|");
+                if (parts.length != 2)
+                    throw new IllegalStateException("Bad schnorrProof format");
+                BigInteger c = new BigInteger(parts[0], 16);
+                BigInteger z = new BigInteger(parts[1], 16);
+                NizkDlProof prf = new NizkDlProof(c, z);
+
+                if (!NizkDlProof.verifyProof(ctx, P, prf))
+                    throw new IllegalStateException("Invalid Schnorr proof for partyIndex=" + partyIndex);
+
+                return P;
+            }
+        }
+        throw new IllegalStateException("Missing ephemeral key for partyIndex=" + partyIndex);
+    }
+
+    // DkgUtils
+    // public static List<PublicKeysWithProofs> fetchAllEphemeralPubs(
+    // DkgContext ctx, PbbClient pbb, int n) throws Exception {
+
+    // PublicKeysWithProofs[] byIndex = new PublicKeysWithProofs[n];
+    // int seen = 0;
+
+    // while (seen < n) {
+    // for (EphemeralKeyDTO dto : pbb.fetch("ephemeralKeys", EphemeralKeyDTO.class))
+    // {
+    // int idx = dto.partyIndex;
+    // if (idx < 0 || idx >= n || byIndex[idx] != null)
+    // continue;
+
+    // ECPoint P = ctx.getGenerator().getCurve()
+    // .decodePoint(org.bouncycastle.util.encoders.Hex.decode(dto.publicKey))
+    // .normalize();
+
+    // String[] parts = dto.schnorrProof.split("\\|");
+    // if (parts.length != 2)
+    // throw new IllegalStateException("Bad schnorrProof format");
+    // BigInteger c = new BigInteger(parts[0], 16);
+    // BigInteger z = new BigInteger(parts[1], 16);
+    // NizkDlProof prf = new NizkDlProof(c, z);
+
+    // if (!NizkDlProof.verifyProof(ctx, P, prf))
+    // throw new IllegalStateException("Invalid Schnorr proof for party " + idx);
+
+    // byIndex[idx] = new PublicKeysWithProofs(idx, P, prf);
+    // seen++;
+    // }
+    // if (seen < n)
+    // Thread.sleep(10);
+    // }
+    // return
+    // java.util.Collections.unmodifiableList(java.util.Arrays.asList(byIndex));
+    // }
 
     public static List<PublicKeysWithProofs> fetchAllEphemeralPubs(
             DkgContext ctx, PbbClient pbb, int n) throws Exception {
-        List<EphemeralKeyDTO> dtos = pbb.fetch("ephemeralKeys", EphemeralKeyDTO.class);
+        List<EphemeralKeyDTO> dtos = pbb.fetch("ephemeralKeys",
+                EphemeralKeyDTO.class);
         List<PublicKeysWithProofs> pubs = new ArrayList<>(dtos.size());
         for (EphemeralKeyDTO dto : dtos) {
             byte[] raw = Hex.decode(dto.publicKey);

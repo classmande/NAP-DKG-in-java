@@ -20,6 +20,7 @@ public class ShareVerificationPublish {
     this.verifierIndex = verifierIndex;
     this.tpki = tpki;
     this.Pftpki = Pftpki;
+
   }
 
   public static ShareVerificationPublish fromDTO(ShareVerificationOutputDTO dto, DkgContext ctx) {

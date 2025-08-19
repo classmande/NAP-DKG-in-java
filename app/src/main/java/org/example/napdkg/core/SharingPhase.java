@@ -316,6 +316,10 @@ public class SharingPhase {
         CHat,
         proof);
     SharingOutputDTO dto = SharingOutputDTO.from(out);
+    // if (dto.id == null || dto.id.isEmpty()) {
+    // dto.id = java.util.UUID.randomUUID().toString();
+    // }
+
     log.info("pk_i for PBB dealer {} = (dto){}", me, dto.dealerPub);
     pbb.publish("DealerPublish", dto);
   }
