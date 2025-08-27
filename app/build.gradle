@@ -101,7 +101,7 @@ java {
 
 application {
     // your demo’s main class:
-    mainClass = 'org.example.napdkg.cli.QuickBench1'
+    mainClass = 'org.example.napdkg.cli.PlainTest'
 }
 
 tasks.withType(Test).configureEach {

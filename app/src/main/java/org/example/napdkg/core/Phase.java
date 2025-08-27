@@ -1,5 +1,5 @@
 package org.example.napdkg.core;
 
-public interface Phase {
-    void run() throws Exception;
+public enum Phase {
+    SETUP, SHARING, VERIFICATION, THRESHOLD, OTHER
 }

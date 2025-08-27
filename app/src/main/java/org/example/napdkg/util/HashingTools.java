@@ -208,7 +208,8 @@ public class HashingTools {
             int t) throws NoSuchAlgorithmException {
 
         // (A) Decide the polynomial degree for "SCRAPE" style.
-        // If the protocol says deg = n - t - 1, do that:
+        // If the protocol says deg = n - t - 1, do that: OBS only works with deg: n - t
+        // - 2.
         int deg = n - t - 2;
         int numCoeffs = deg + 1;
 

@@ -10,32 +10,6 @@ import java.math.BigInteger;
 public class EvaluationTools {
 
     /**
-     * Compute aggregator weights r[j] = v[j]·m*(α[j]) mod p for j=1..n.
-     *
-     * @param p       prime modulus
-     * @param alphas  array length (n+1) with α[1..n] used
-     * @param v       SCRAPE dual‐code coefficients length=n
-     * @param mCoeffs polynomial coefficients [c₀, c₁, …, c_d], so m*(x)=∑ c_i·x^i
-     * @param n       total number of participants
-     * @return BigInteger[n], where result[j−1] = v[j−1] * m*(α[j]) mod p
-     */
-    public static BigInteger[] computeScrapeWeights(
-            BigInteger p,
-            BigInteger[] alphas,
-            BigInteger[] v,
-            BigInteger[] mCoeffs,
-            int n) {
-        BigInteger[] r = new BigInteger[n];
-        for (int j = 1; j <= n; j++) {
-            // Evaluate m*(α[j]) using Horner’s method (mod p)
-            BigInteger eval = evaluatePolynomial(mCoeffs, alphas[j], p);
-            // Multiply by v[j-1]
-            r[j - 1] = v[j - 1].multiply(eval).mod(p);
-        }
-        return r;
-    }
-
-    /**
      * Evaluate the hash‑derived polynomial m*(X) at a single point αᵢ:
      *
      * m*(αᵢ) = ∑_{j=0}^{d} cⱼ·(αᵢ)^j mod p

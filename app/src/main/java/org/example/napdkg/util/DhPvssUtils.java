@@ -15,38 +15,6 @@ import java.math.BigInteger;
  * These vᵢ are used when aggregating shares for the consistency check.
  */
 public class DhPvssUtils {
-
-    /**
-     * r_i = v_i · m*(α_i) (mod p).
-     *
-     * @param p subgroup order (prime modulus)
-     * @param α evaluation points [0..n], we only use α[1..n]
-     * @param v dual‐code coefficients [v1..vn]
-     * @param c polynomial coefficients [c0..c_{n−t−1}] of m*(X)
-     * @param n total number of participants
-     * @return array r[0..n−1], where r[i] = v_{i+1}·m*(α_{i+1}) (mod p)
-     */
-    public static BigInteger[] computeScrapeWeights(
-            BigInteger p,
-            BigInteger[] α,
-            BigInteger[] v,
-            BigInteger[] c,
-            int n) {
-        BigInteger[] r = new BigInteger[n];
-        for (int i = 1; i <= n; i++) {
-            // 1) evaluate m*(α[i]) = c₀ + c₁·α[i] + c₂·α[i]^2 + … (mod p)
-            BigInteger eval = BigInteger.ZERO;
-            BigInteger xPow = BigInteger.ONE; // α[i]^0
-            for (int k = 0; k < c.length; k++) {
-                eval = eval.add(c[k].multiply(xPow)).mod(p);
-                xPow = xPow.multiply(α[i]).mod(p);
-            }
-            // 2) multiply by dual‐code coefficient v[i−1]
-            r[i - 1] = v[i - 1].multiply(eval).mod(p);
-        }
-        return r;
-    }
-
     /**
      * Simple SCRAPE dual‐code weights:
      *

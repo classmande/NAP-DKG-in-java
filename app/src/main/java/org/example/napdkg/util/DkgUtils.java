@@ -160,44 +160,6 @@ public final class DkgUtils {
         throw new IllegalStateException("Missing ephemeral key for partyIndex=" + partyIndex);
     }
 
-    // DkgUtils
-    // public static List<PublicKeysWithProofs> fetchAllEphemeralPubs(
-    // DkgContext ctx, PbbClient pbb, int n) throws Exception {
-
-    // PublicKeysWithProofs[] byIndex = new PublicKeysWithProofs[n];
-    // int seen = 0;
-
-    // while (seen < n) {
-    // for (EphemeralKeyDTO dto : pbb.fetch("ephemeralKeys", EphemeralKeyDTO.class))
-    // {
-    // int idx = dto.partyIndex;
-    // if (idx < 0 || idx >= n || byIndex[idx] != null)
-    // continue;
-
-    // ECPoint P = ctx.getGenerator().getCurve()
-    // .decodePoint(org.bouncycastle.util.encoders.Hex.decode(dto.publicKey))
-    // .normalize();
-
-    // String[] parts = dto.schnorrProof.split("\\|");
-    // if (parts.length != 2)
-    // throw new IllegalStateException("Bad schnorrProof format");
-    // BigInteger c = new BigInteger(parts[0], 16);
-    // BigInteger z = new BigInteger(parts[1], 16);
-    // NizkDlProof prf = new NizkDlProof(c, z);
-
-    // if (!NizkDlProof.verifyProof(ctx, P, prf))
-    // throw new IllegalStateException("Invalid Schnorr proof for party " + idx);
-
-    // byIndex[idx] = new PublicKeysWithProofs(idx, P, prf);
-    // seen++;
-    // }
-    // if (seen < n)
-    // Thread.sleep(10);
-    // }
-    // return
-    // java.util.Collections.unmodifiableList(java.util.Arrays.asList(byIndex));
-    // }
-
     public static List<PublicKeysWithProofs> fetchAllEphemeralPubs(
             DkgContext ctx, PbbClient pbb, int n) throws Exception {
         List<EphemeralKeyDTO> dtos = pbb.fetch("ephemeralKeys",

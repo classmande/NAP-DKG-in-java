@@ -11,6 +11,9 @@ import org.slf4j.LoggerFactory;
 
 public class GShamirShareDKG {
 
+    // Container for the result (the shares) from the GShamir.Share, holding the
+    // Share[] with a Biginter for a and ECPoint for A.
+    //
     public static class ShamirSharingResult {
         private static final Logger log = LoggerFactory.getLogger(GShamirShareDKG.class);
         public final Share[] shares;
@@ -51,14 +54,11 @@ public class GShamirShareDKG {
                 BigInteger x = alpha[i];
                 // Horner’s method for polynomial evaluation
 
-                // System.out.println("Generating share for i=1, alpha=" + alpha[1]);
-                // System.out.println("Coefficients: " + Arrays.toString(coeffs));
                 BigInteger a_i = coeffs[t];
                 for (int j = t - 1; j >= 0; j--) {
                     a_i = a_i.multiply(x).add(coeffs[j]).mod(p);
-                    // System.out.println("After coeff " + j + ": a_i=" + a_i);
+
                 }
-                // System.out.println("Generated a_i = " + a_i);
 
                 ECPoint A_i = G.multiply(a_i).normalize();
                 out[i - 1] = new Share(a_i, A_i);

@@ -10,6 +10,11 @@ import org.example.napdkg.dto.EphemeralKeyDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+//For all j →[n], parse pkj as (Ej , ςj ) and check that ςj is valid w.r.t G, Ej.
+//If this check fails, abort. Proceed if this check passes for all pkj : j →[n]. ie. "  if (verify == false) {
+//             throw new IllegalStateException("pk check failed - abort");
+//  }" //
+
 public class SetupPhaseWaiter {
     private static final Logger log = LoggerFactory.getLogger(SetupPhaseWaiter.class);
 

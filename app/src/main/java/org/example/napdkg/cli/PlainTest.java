@@ -14,7 +14,10 @@ import org.example.napdkg.client.InMemoryPbbClient;
 import org.example.napdkg.client.InstrumentedPbbClient;
 import org.example.napdkg.client.PbbClient;
 import org.example.napdkg.core.DHPVSS_Setup;
+import org.example.napdkg.core.NetShimPbb;
 import org.example.napdkg.core.PartyContext;
+import org.example.napdkg.core.Phase;
+import org.example.napdkg.core.PhaseScope;
 import org.example.napdkg.core.SetupPhasePublisher;
 import org.example.napdkg.core.SetupPhaseWaiter;
 import org.example.napdkg.core.ShareVerificationPublish;
@@ -31,7 +34,9 @@ import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 
-public class QuickBench1 {
+public class PlainTest {
+
+    // Iterations, number of participants, threshold and fa(secure parameter)
     private static final int NUM_ITERATIONS = 1;
     private static final int n = 10;
     private static final int t = n / 2 + 1;
@@ -42,17 +47,29 @@ public class QuickBench1 {
     }
 
     public static TimingResult runOnce(PbbClient raw) throws Exception {
-        Logger log = LoggerFactory.getLogger(QuickBench1.class);
+        // Logger for debugging, info and warning statements.
+        Logger log = LoggerFactory.getLogger(FullTest.class);
+
+        // Gson to convert Java Objects into JSON and vice versa
         Gson gson = GsonFactory.createGson();
         // 1) Global timer
         long startAll = System.nanoTime();
-        // 2) Build PBB client (instrumented)
+
         PbbClient pbb = new InstrumentedPbbClient(raw, gson);
+
+        // // // 2) Build PBB client (public ledger) (instrumented)????? Whats
+        // instrumented
+        // // // ?????
+
         // 3) DKG context
+        // Groupgeneration
         GroupGenerator.GroupParameters gp = GroupGenerator.generateGroup();
+        // Setup
         DkgContext ctx = DHPVSS_Setup.dhPvssSetup(gp, t, n);
         // 4) Executor with at most n threads (and no more than CPU cores)
+        // For threads to run the participants asynchronously.
         ExecutorService executor = Executors.newFixedThreadPool(n);
+        // For timing
         TimingResult result = new TimingResult();
         // —— Parallel clear old data ——
         List<Callable<Void>> clearTasks = new ArrayList<>();
@@ -76,9 +93,13 @@ public class QuickBench1 {
         List<PartyContext> parties = new ArrayList<>(n);
         for (int i = 0; i < n; i++)
             parties.add(new PartyContext(i, ctx, pbb, n, t, fa));
-        // —— Phase 1: Setup ——
+        // —— Phase 1: Setup —— Splittet in publishEphemeralKey and
+        // awayAllEpehemeralKeys
+
+        List<Callable<Void>> tasks;
         long t0 = System.nanoTime();
-        List<Callable<Void>> tasks = new ArrayList<>();
+
+        tasks = new ArrayList<>();
         for (PartyContext P : parties)
             tasks.add(() -> {
                 SetupPhasePublisher.publishEphemeralKey(P);
@@ -86,12 +107,27 @@ public class QuickBench1 {
             });
 
         executor.invokeAll(tasks);
-        for (PartyContext P : parties)
-            SetupPhaseWaiter.awaitAllEphemeralKeys(P, n);
+
+        // Phase 1.2 parse pkj as (Ej , ςj ) and check that ςj is valid w.r.t G, Ej.
+        // (Done in awaitAllEphemeralKeys)
+        List<Callable<Void>> waits = new ArrayList<>();
+        for (PartyContext P : parties) {
+            waits.add(() -> {
+                SetupPhaseWaiter.awaitAllEphemeralKeys(P, n);
+                return null;
+            });
+        }
+        executor.invokeAll(waits);
         result.setupMs = (System.nanoTime() - t0) / 1_000_000.0;
-        // —— Phase 2: Sharing ——
+        // —— Phase 2: Sharing —— //Every party Pi for i →[n]
         t0 = System.nanoTime();
         tasks.clear();
+        tasks = new ArrayList<>();
+        // Lambda/arrow function. This is a little function that will run later. So the
+        // add is a callable void that will be added to tasks.
+        // Here we add an instance a SharingPhase with P and t and
+        // dorunSharingAsDealer2() for that party P. And that is done for each party P
+        // in parties.
         for (PartyContext P : parties)
             tasks.add(() -> {
                 new SharingPhase(P, t).runSharingAsDealer2();
@@ -99,24 +135,36 @@ public class QuickBench1 {
             });
         executor.invokeAll(tasks);
         result.sharingMs = (System.nanoTime() - t0) / 1_000_000.0;
+        // Timing Ends for Setup phase
+
         // —— Phase 3: Verification (stop at t+fa) ——
         t0 = System.nanoTime();
         tasks.clear();
 
         System.out.println("==> Verification");
 
-        // AFTER you build `parties`
+        // AFTER sharing and before verifying.
+
+        // New vps list is made and we add all parties to the verication list,
+        // as we did on the SharingPhase as well, to keep the partyContext and still
+        // work in seperate classes.
         List<VerificationPhase> vps = new ArrayList<>(n);
         for (PartyContext P : parties)
             vps.add(new VerificationPhase(P));
 
+        // set the threshold target before verification - how many shares is needed to
+        // create the a common secret key.
         final int target = t + fa;
 
+        // Verification for all i in n.
         for (int i = 0; i < n; i++) {
             final int idx = i;
             tasks.add(() -> {
+                // For i, create an Object VerificactionPhase vp which is index idx = i on the
+                // vps list of type VerificationPhase.
                 VerificationPhase vp = vps.get(idx);
 
+                // for d < n && size of q1 = size t + fa.
                 for (int d = 0; d < n && vp.q1Size() < target; d++) {
                     // skip dealers already in Q1
                     boolean already = false;
@@ -135,9 +183,11 @@ public class QuickBench1 {
                         log.warn("Party {}: VerifySharesFor({}) failed: {}", idx, d, e.toString());
                     }
                 }
-
+                // finalizing Q1 so its the correct size t + fa.
                 vp.finalizeQ1Deterministically();
                 List<Integer> dealers = new ArrayList<>();
+                // no for all sharingOutputs in Q1 we add the shareinOutputs dealerindex and
+                // logs the finalized Q1 for info and debugging purposes.
                 for (SharingOutput sh : vp.getQ1())
                     dealers.add(sh.getDealerIndex());
                 log.info("Party {} finalized Q1 size={} dealers={}", idx, vp.q1Size(), dealers);
@@ -153,29 +203,38 @@ public class QuickBench1 {
 
         // —— Phase 4: Threshold + Reconstruction ——
         // —— Phase 4a: publish Θ_i (threshold outputs) ——
+        // Step 1-4 in Threshold Key Computation
         t0 = System.nanoTime();
-        tasks.clear();
-        for (
-
-                int i = 0; i < n; i++) {
+        // not quite sure with the final int idx.
+        // however we use the verificationPhase instance vps to run the threshold
+        // functions on.
+        for (int i = 0; i < n; i++) {
             final int idx = i;
             tasks.add(() -> {
                 vps.get(idx).publishThresholdOutput(); // <-- REUSE the same vp instance
                 return null;
             });
         }
-        var futsA = executor.invokeAll(tasks);
+        var futsA = executor.invokeAll(tasks); // execute
         for (var f : futsA)
-            f.get(); // surface errors instead of silently hanging
+            f.get(); // surface errors instead of silently hanging - for debugging if the system just
+                     // hangs in deadlock.
+
         System.out.println("<== THRESHOLD publish");
 
         // —— Phase 4b: collect Θ_j (Q2), prune, and final reconstruction ——
+        // step 5 create the Q2 by collecting the parties that published their
+        // verification to PBB. using CllectAndPruneThresholdOutputs().
+        // step 6 computing Wj and dropping parties if DLEQ doesen't approve also in
+        // CollectAndPruneThresholdOutputs().
         tasks.clear();
         for (int i = 0; i < n; i++) {
             final int idx = i;
             tasks.add(() -> {
                 VerificationPhase vp = vps.get(idx); // reuse again
                 List<ShareVerificationPublish> Q2 = vp.collectAndPruneThresholdOutputs();
+                // step 7 computing tpk by reconstructing with GShamirSharing and comparing all
+                // tpks to the first one that finished the tpk.
                 vp.finalReconstruction(vp.getQ1(), Q2);
                 return null;
             });
@@ -227,5 +286,6 @@ public class QuickBench1 {
             double var = (sq[j] - sum[j] * sum[j] / N) / (N - 1);
             System.out.printf("%-12s: %7s ms ± %7s ms%n", names[j], df.format(mean), df.format(Math.sqrt(var)));
         }
+        System.out.printf("Running %d iterations (%s mode)…%n%n", NUM_ITERATIONS, inmem ? "in-memory" : "HTTP");
     }
 }

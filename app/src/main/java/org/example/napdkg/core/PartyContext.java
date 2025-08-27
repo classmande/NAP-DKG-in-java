@@ -3,6 +3,7 @@ package org.example.napdkg.core;
 import org.example.napdkg.client.PbbClient;
 import org.example.napdkg.util.DkgContext;
 
+// Container class for storing the context information of the DKG. 
 public class PartyContext {
     public final int id, n, t, fa;
     public final DkgContext ctx;

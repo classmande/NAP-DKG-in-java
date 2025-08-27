@@ -6,6 +6,27 @@
     "configurations": [
         {
             "type": "java",
+            "name": "FullTest",
+            "request": "launch",
+            "mainClass": "org.example.napdkg.cli.FullTest",
+            "projectName": "app"
+        },
+        {
+            "type": "java",
+            "name": "PlainTest",
+            "request": "launch",
+            "mainClass": "org.example.napdkg.cli.PlainTest",
+            "projectName": "app"
+        },
+        {
+            "type": "java",
+            "name": "LatencyTest",
+            "request": "launch",
+            "mainClass": "org.example.napdkg.cli.LatencyTest",
+            "projectName": "app"
+        },
+        {
+            "type": "java",
             "name": "QuickBench1",
             "request": "launch",
             "mainClass": "org.example.napdkg.cli.QuickBench1",

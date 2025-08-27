@@ -6,6 +6,7 @@ import org.example.napdkg.util.DkgContext;
 import org.example.napdkg.util.DhPvssUtils;
 import org.example.napdkg.util.GroupGenerator;
 
+// Important!! Hard to understand - the derivation of the SCRAPE coefficients. Alert on mod-inversen and Reed-Solomon codes how they work! //
 /**
  * DHPVSS_Setup initializes all public parameters for the YOSO‐style DHPVSS:
  *
@@ -34,15 +35,17 @@ public class DHPVSS_Setup {
         if (p == null)
             throw new IllegalArgumentException("Missing curve order");
         if (n - t - 2 <= 0)
+            // Check for debugging - realised that the order had to be at max n - t - 2 and
+            // not n - t - 1.
             throw new IllegalArgumentException("Requires n − t − 2 > 0");
 
         // 2) Choose distinct evaluation points α₀ … αₙ ∈ ℤₚ
-        // Here we simply set αᵢ = i for i=0..n (in practice pick any distinct nonzero)
+        // Here we simply set αᵢ = i for i = 0..n (in practice pick any distinct
+        // nonzero)
         BigInteger[] alphas = new BigInteger[n + 1];
         for (int i = 0; i <= n; i++) {
             alphas[i] = BigInteger.valueOf(i);
         }
-        // BigInteger[] vjs = DhPvssUtils.deriveDkgWeights(alphas, p);
 
         // 4) Compute dual‐code weights v₁ … vₙ:
         // vᵢ = ∏_{j≠i} (α₀ − αⱼ)/(αᵢ − αⱼ) mod p

@@ -13,10 +13,12 @@ import java.util.Map;
 
 import org.bouncycastle.math.ec.ECPoint;
 import org.example.napdkg.client.PbbClient;
+import org.example.napdkg.client.TopicPoller;
 import org.example.napdkg.dto.EphemeralKeyDTO;
 import org.example.napdkg.dto.ShareVerificationOutputDTO;
 import org.example.napdkg.dto.SharingOutputDTO;
 import org.example.napdkg.util.DkgContext;
+import org.example.napdkg.util.DkgRef;
 import org.example.napdkg.util.DkgUtils;
 import org.example.napdkg.util.EvaluationTools;
 import org.example.napdkg.util.HashingTools;
@@ -24,12 +26,19 @@ import org.example.napdkg.util.MaskedShareCHat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A class for Share Verification (2nd round or after t + fa parties post Shi on
+ * PBB.)
+ * Follows 6 steps.
+ */
+
 public class VerificationPhase {
     private static final Logger log = LoggerFactory.getLogger(VerificationPhase.class);
 
     static final int POLL_MS = 100;
 
     private final PartyContext P;
+
     private final DkgContext ctx;
     private final PbbClient pbb;
     private final int me, n, t, fa;
@@ -90,6 +99,21 @@ public class VerificationPhase {
         q1Finalized = true;
     }
 
+    // Optional background snapshot source for "DealerPublish" (shared by all
+    // instances)
+    private static volatile TopicPoller<SharingOutputDTO> dealerPoller = null;
+
+    public static void setDealerPoller(TopicPoller<SharingOutputDTO> p) {
+        dealerPoller = p;
+    }
+
+    private List<SharingOutputDTO> dealerSnapshotOrFetch() throws Exception {
+        TopicPoller<SharingOutputDTO> p = dealerPoller;
+        if (p != null)
+            return p.snapshot(); // non-blocking, in-memory snapshot
+        return pbb.fetch("DealerPublish", SharingOutputDTO.class); // normal path
+    }
+
     private void ensureAijForFinalQ1() {
 
         BigInteger sk = P.ephKey.getSecretKey();
@@ -108,23 +132,6 @@ public class VerificationPhase {
         }
     }
 
-    // public List<EphemeralKeyPublic> getEphemeralPubs() throws Exception {
-    // return SharingPhase.fetchEph();
-    // }
-    /** Top-level: do the whole threshold phase in order, once. */
-    public void runThresholdPhase() throws Exception {
-        // 1) collect & verify exactly t+fa dealers into Q1
-
-        // 2) publish your own threshold output Θ_i
-
-        // // 3) collect first t+fa threshold-outputs Θ_j and prune bad proofs → Q2
-        // List<ShareVerificationPublish> Q2 = collectAndPruneThresholdOutputs();
-        // log.info("✅ Q2 formed ({} parties)", Q2.size());
-
-        // // 4) do the final Shamir reconstruction
-        // finalReconstruction(Q1, Q2);
-    }
-
     /**
      * Round 2 (Share Verification) Threshold Key Computation (optimistic).
      * 
@@ -138,7 +145,7 @@ public class VerificationPhase {
         SharingOutput so = null;
         while (so == null) {
             Thread.sleep(POLL_MS);
-            for (SharingOutputDTO dto : pbb.fetch("DealerPublish", SharingOutputDTO.class)) {
+            for (SharingOutputDTO dto : dealerSnapshotOrFetch()) {
                 if (dto.dealerIndexDTO != dealerToVerify)
                     continue;
                 so = SharingOutput.fromDTO(dto, ctx);
@@ -159,9 +166,11 @@ public class VerificationPhase {
         SharingOutput so = fetchAndCollectDealer(dealerToVerify);
         SharingOutput CurrentDealer = so;
         boolean samedealer = true;
+        // quick sanity check
         if (CurrentDealer.dealerIndex == dealerToVerify) {
             samedealer = true;
         }
+
         System.out.println("is CurrentDealer == dealterToVerify??" + samedealer);
 
         List<PublicKeysWithProofs> pubs = DkgUtils.fetchAllEphemeralPubs(ctx, pbb, n);
@@ -172,25 +181,25 @@ public class VerificationPhase {
         for (int k = 0; k < n; k++) {
             ECPoint Ek = pubs.get(k).getPublicKey().normalize();
             E[k] = Ek;
+            // put it on the HashMap as a HexString.
             posByEnc.put(org.bouncycastle.util.encoders.Hex.toHexString(Ek.getEncoded(true)), k);
         }
         int posMe;
-        {
-            String myEnc = org.bouncycastle.util.encoders.Hex
-                    .toHexString(P.ephKey.getPublic().normalize().getEncoded(true));
-            Integer pm = posByEnc.get(myEnc);
-            if (pm == null)
-                throw new IllegalStateException("Can't find myself in E-list");
-            posMe = pm;
-        }
+
+        String myEnc = org.bouncycastle.util.encoders.Hex
+                .toHexString(P.ephKey.getPublic().normalize().getEncoded(true));
+        Integer pm = posByEnc.get(myEnc);
+        if (pm == null)
+            throw new IllegalStateException("Can't find myself in E-list");
+        posMe = pm;
 
         // 1) RE-DERIVE m*(x) using the correct dealerPub seed
         BigInteger[] mStar = HashingTools.deriveMStar(
                 ctx,
                 CurrentDealer.dealerPub, // <-- the key pkj from the dealer we want to verify
-                E,
-                CurrentDealer.Cij,
-                CurrentDealer.CHat,
+                E, // <-- pkk with proof from all dealer on the public list.
+                CurrentDealer.Cij, // <-- the Cij of the dealer we want to verify
+                CurrentDealer.CHat, // <-- the CHat of the dealer we want to verify
                 n, t);
 
         System.out.println("Verifier computed mStar: " + Arrays.toString(mStar));
@@ -218,13 +227,14 @@ public class VerificationPhase {
         // ---- 3) DLEQ ----
         if (!NizkDlEqProof.verifyProof(ctx, CurrentDealer.dealerPub, U, V, CurrentDealer.proof)) {
             log.info("dealer DLEQ failed {}", dealerToVerify);
-            // remove dealer if it was previously added (defensive)
+            // remove dealer if DLEQ fails.
             for (int q = 0; q < Q1.size(); q++) {
                 if (Q1.get(q).getDealerIndex() == dealerToVerify) {
                     Q1.remove(q);
                     break;
                 }
             }
+            // Skipping step 4, 5, 6
             return;
         }
         log.info("DLEQ SUCCESS for dealer {}", dealerToVerify);
@@ -253,6 +263,9 @@ public class VerificationPhase {
         // a_{j,i} = ĉ_{j,i} XOR H(A_{j,i}) (byte-exact inside MaskedShareCHat)
 
         BigInteger aji = MaskedShareCHat.unmaskShare(Aji, chi, p);
+
+        // ------5) Check that A'j,i <-- a'j,i * G and, if not, remove from Q1 (In
+        // practice it should go to step 6, compute a DLEQ and publish complaint)
         if (!G.multiply(aji).normalize().equals(Aji)) {
             log.warn("Bad masked share for dealer {} (me={})", dealerToVerify, posMe);
             // dump minimal bytes to compare
@@ -273,9 +286,12 @@ public class VerificationPhase {
                 }
             return;
         }
+        // iff this check passes put Aji and aji on there hashmaps on the in the
+        // VerificationPhase container.
         Aij.put(dealerToVerify, Aji);
         aij.put(dealerToVerify, aji);
 
+        // Debug to check if there is an index problem and its of by one.
         int matchK = -1;
         for (int k = 0; k < n; k++) {
             BigInteger a_k = MaskedShareCHat.unmaskShare(Aji, CurrentDealer.CHat[k], ctx.getOrder());
@@ -293,6 +309,8 @@ public class VerificationPhase {
         log.info("A'j,i equals Cj,i - ski * Ej");
 
     }
+
+    // Threshold Key Computation (Optimistic, as part of Share Verification)
 
     public void publishThresholdOutput() throws Exception {
         finalizeQ1Deterministically();
@@ -355,69 +373,6 @@ public class VerificationPhase {
                 ShareVerificationOutputDTO.from(new ShareVerificationPublish(me, tauPki, thresholdProof)));
         log.info("→ DLEQ Θ_{}", me);
     }
-
-    // public void publishThresholdOutput() throws Exception {
-    // finalizeQ1Deterministically();
-    // if (Q1.isEmpty()) {
-    // log.error("Refusing to publish Θ_{}: Q1 empty.", me);
-    // return;
-    // }
-    // ensureAijForFinalQ1();
-
-    // log.info("publishing Θ_{} with Q1={}", me,
-    // Q1.stream().map(SharingOutput::getDealerIndex).toList());
-
-    // ECPoint tau = G.getCurve().getInfinity();
-    // BigInteger sk_i = P.ephKey.getSecretKey();
-    // for (SharingOutput shj : Q1) {
-    // int j = shj.getDealerIndex();
-    // ECPoint Aji = Aij.get(j);
-    // if (Aji == null) {
-    // ECPoint Ej = shj.getDealerPub();
-    // ECPoint Cji = shj.getCij()[me]; // keep your existing indexing here
-    // Aji = Cji.subtract(Ej.multiply(sk_i)).normalize();
-    // Aij.put(j, Aji);
-    // }
-    // tau = tau.add(Aji).normalize();
-    // }
-    // this.tauPki = tau;
-
-    // // EQ1 := Σ_{j∈Q1} E_j
-    // ECPoint EQ1 = G.getCurve().getInfinity();
-    // for (SharingOutput shj : Q1) {
-    // EQ1 = EQ1.add(shj.getDealerPub()).normalize();
-    // }
-
-    // // 4) Δ = W_i − τ
-    // // Δ = s_i · EQ1 (no Wi, no column selection involved)
-    // ECPoint delta = EQ1.multiply(sk_i).normalize();
-
-    // // (Optional sanity: warn if your local Wi−τ doesn’t match s_i·EQ1)
-    // if (true) {
-    // ECPoint Wi = G.getCurve().getInfinity();
-    // for (SharingOutput shj : Q1)
-    // Wi = Wi.add(shj.getCij()[me]).normalize();
-    // ECPoint check = Wi.subtract(tau).normalize();
-    // if (!check.equals(delta)) {
-    // log.warn("Δ mismatch: (W_i−τ) != s_i·EQ1 (likely a dealer-column indexing
-    // mismatch);" +
-    // " publishing proof with Δ = s_i·EQ1 anyway.");
-    // }
-    // }
-
-    // ECPoint Ei = P.ephKey.getPublic();
-    // this.thresholdProof = NizkDlEqProof.generateProof(ctx, Ei, EQ1, delta, sk_i);
-    // boolean ok = NizkDlEqProof.verifyProof(ctx, Ei, EQ1, delta, thresholdProof);
-    // log.info(" → DLEQ proof: e={} z={} verify={}",
-    // thresholdProof.getChallenge().toString(16),
-    // thresholdProof.getResponse().toString(16),
-    // ok);
-
-    // pbb.publish("ShareVerificationOutput",
-    // ShareVerificationOutputDTO.from(new ShareVerificationPublish(me, tauPki,
-    // thresholdProof)));
-    // log.info("→ DLEQ Θ_{}", me);
-    // }
 
     public List<ShareVerificationPublish> collectAndPruneThresholdOutputs() throws Exception {
         finalizeQ1Deterministically();
@@ -583,40 +538,25 @@ public class VerificationPhase {
             tpkIdx[k] = j + 1; // if α_j = j+1
             tpkShares[k] = new Share(BigInteger.ZERO, Q2.get(k).tpki);
         }
-        ECPoint Gx = GShamirShareDKG.ShamirSharingResult
-                .reconstructSecretEC(ctx, tpkShares, tpkIdx);
+        ECPoint Gx = GShamirShareDKG.ShamirSharingResult.reconstructSecretEC(ctx, tpkShares, tpkIdx);
+        ECPoint gxNorm = Gx.normalize();
 
-        try {
-            final String gxHex = org.bouncycastle.util.encoders.Hex.toHexString(Gx.getEncoded(true));
-            log.info("🎉 Reconstructed group public key G^x = {}", gxHex);
-
-            if (trueGroupKey == null) {
-                log.info("No reference trueGroupKey available; skipping equality check.");
+        ECPoint prev = DkgRef.TRUE_Y.compareAndExchange(null, gxNorm);
+        if (prev == null) {
+            // we stored the reference
+            log.info("Stored trueGroupKey reference = {}",
+                    org.bouncycastle.util.encoders.Hex.toHexString(gxNorm.getEncoded(true)));
+        } else {
+            // compare against the stored reference
+            if (!prev.equals(gxNorm)) {
+                log.warn("Group‐key mismatch! reconstructed {} but expected {}",
+                        org.bouncycastle.util.encoders.Hex.toHexString(gxNorm.getEncoded(true)),
+                        org.bouncycastle.util.encoders.Hex.toHexString(prev.getEncoded(true)));
             } else {
-                // normalize both sides before equals()
-                ECPoint gxNorm = Gx.normalize();
-                ECPoint refNorm = trueGroupKey.normalize();
-
-                final String refHex = org.bouncycastle.util.encoders.Hex.toHexString(trueGroupKey.getEncoded(true));
-
-                if (!gxNorm.equals(refNorm)) {
-                    log.warn("Group‐key mismatch! reconstructed {} but expected {}", gxHex, refHex);
-                } else {
-                    log.info("✓ Group‐key matches reference.");
-                }
-
-                log.info(" → Final reconstructed group‐key        = {}", gxHex);
-                log.info(" → Expected trueGroupKey from SmokeTest = {}", refHex);
+                log.info("✓ Group‐key matches reference.");
+                log.info("🎉 reconstruction OK!");
             }
-
-            log.info("🎉 reconstruction OK!");
-            log.info("🎉 Group public key Y = {}", gxHex);
-
-        } catch (Throwable t) {
-            // If anything goes wrong here, we’ll see it
-            log.error("Final key check crashed:", t);
         }
+
     }
 }
-
-// Reconstruct G^x at 0 via EC-Shamir interpolation over Q2
