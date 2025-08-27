@@ -7,9 +7,10 @@
 ## Run everything
 ```bash
 git clone https://github.com/classmande/NAP-DKG-in-java.git
-cd DHPVSS-in-java
+cd NAP-DKG-in-java
 npx json-server --watch db.json --port 3003
 
+In new terminal: 
 Run simple speed test with parameter
 ./gradlew run --args="--n 10 --t 5 --fa 1" 
   -Dorg.slf4j.simpleLogger.defaultLogLevel=info
