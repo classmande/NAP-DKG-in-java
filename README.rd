@@ -15,7 +15,7 @@ In new terminal, COPY/PASTE this:
 ./gradlew run --args="--n 10 --t 5 --fa 1" 
   -Dorg.slf4j.simpleLogger.defaultLogLevel=info
   
-Run QuickBench1.java for 
+Run FullTest.java for 
 quick benchmark with N = 10 
-(Simulating the whole protocol with all Participants Asyncronology using Javas Threads 
+(Simulating a simple speed test of the whole protocol with (no jitter/latency) all Participants using Javas Threads 
 (allows a program to operate more efficiently by doing multiple things at the same time)).
