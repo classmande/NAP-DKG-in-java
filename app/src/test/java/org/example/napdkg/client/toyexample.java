@@ -24,7 +24,7 @@ public class toyexample {
         }
 
         // Compute dual code coefficients
-        BigInteger[] v = DhPvssUtils.deriveShrapeCoeffs(p, alpha, n);
+        BigInteger[] v = DkgUtils.deriveShrapeCoeffs(p, alpha, n);
 
         // SCRAPE check for degrees 0, 1, 2
         for (int deg = 0; deg <= n - t - 1; deg++) {

@@ -20,10 +20,10 @@ public class SharingBenchmark {
             state.pbb.delete("DealerPublish", each.id);
         }
 
-        // (B) Now, each party runs runSharingAsDealer2()
+        // (B) Now, each party runs runSharingAsDealer()
         for (var P : parties) {
             var sp = new SharingPhase(P, t);
-            sp.runSharingAsDealer2();
+            sp.runSharingAsDealer();
         }
 
         // (C) Block until at least (t+fa) DealerPublish messages appear

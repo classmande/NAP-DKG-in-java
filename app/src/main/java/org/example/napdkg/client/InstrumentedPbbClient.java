@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.example.napdkg.core.Metrics;
+
 import com.google.gson.Gson;
 
 /** Wraps any PbbClient and counts bytes/messages globally and per topic. */
@@ -17,6 +19,7 @@ public class InstrumentedPbbClient implements PbbClient {
     // ---- global counters (simple synchronized bumps) ----
     private long bytesSent = 0, bytesReceived = 0;
     private long publishes = 0, fetches = 0, deletes = 0;
+    private final Metrics metrics;
 
     // ---- per-topic stats ----
     private static final class TopicStats {
@@ -37,11 +40,28 @@ public class InstrumentedPbbClient implements PbbClient {
         }
     }
 
+    // InstrumentedPbbClient.java
+    public void resetCounters() {
+        this.bytesSent = 0;
+        this.bytesReceived = 0;
+        this.publishes = 0;
+        this.fetches = 0;
+        this.deletes = 0;
+
+    }
+
     private final Map<String, TopicStats> byTopic = new ConcurrentHashMap<>();
 
     public InstrumentedPbbClient(PbbClient delegate, Gson gson) {
         this.delegate = delegate;
         this.gson = gson;
+        this.metrics = null;
+    }
+
+    public InstrumentedPbbClient(PbbClient delegate, Gson gson, Metrics metrics) {
+        this.delegate = delegate;
+        this.gson = gson;
+        this.metrics = metrics;
     }
 
     private TopicStats statsFor(String topic) {

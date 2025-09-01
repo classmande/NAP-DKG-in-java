@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 
 import org.bouncycastle.math.ec.ECPoint;
 
@@ -295,54 +294,4 @@ public class HashingTools {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Helper: compress an ECPoint to exactly 33 bytes (0x02/0x03 || 32-byte X
-    // coordinate).
-    private static byte[] compressTo33(ECPoint P) {
-        // assume P is normalized. getEncoded(true) always yields 1 + 32 bytes on
-        // secp256r1.
-        byte[] raw = P.normalize().getEncoded(true);
-        if (raw.length != 33) {
-            throw new IllegalStateException("Expected 33-byte compressed ECPoint, got " + raw.length);
-        }
-        return raw;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Helper: turn any BigInteger into exactly 32 bytes (big-endian).
-    private static byte[] toFixed32(BigInteger x) {
-        byte[] raw = x.toByteArray();
-        if (raw.length == 32) {
-            return raw;
-        } else if (raw.length == 33 && raw[0] == 0x00) {
-            // leading zero, drop it
-            return Arrays.copyOfRange(raw, 1, 33);
-        } else if (raw.length < 32) {
-            // left-pad with zero bytes
-            byte[] out = new byte[32];
-            System.arraycopy(raw, 0, out, 32 - raw.length, raw.length);
-            return out;
-        } else {
-            // too long (shouldn’t happen if x < p < 2^256), but just take the low 32 bytes:
-            return Arrays.copyOfRange(raw, raw.length - 32, raw.length);
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Helper: standard hex‐encoder (lowercase).
-    private static String bytesToHex(byte[] b) {
-        StringBuilder sb = new StringBuilder(b.length * 2);
-        for (byte x : b) {
-            sb.append(String.format("%02x", x & 0xff));
-        }
-        return sb.toString();
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Helper: route debug prints through your logger (or System.out).
-    private static void logDebug(String msg) {
-        // Replace “System.out.println” with your logger.debug(...) if you have SLF4J or
-        // logback available.
-        System.out.println(msg);
-    }
 }

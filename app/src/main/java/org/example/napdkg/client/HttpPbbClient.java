@@ -9,15 +9,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 
-import org.example.napdkg.core.NapDkgParty;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 public class HttpPbbClient implements PbbClient {
-    final Logger log = LoggerFactory.getLogger(NapDkgParty.class);
+
     private final HttpClient client = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1).build();
     private final URI base;

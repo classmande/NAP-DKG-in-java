@@ -19,5 +19,3 @@ public class ThresholdOutput {
         this.proof = proof;
     }
 }
-
-// … then your waitForAndDecode helper and other methods …

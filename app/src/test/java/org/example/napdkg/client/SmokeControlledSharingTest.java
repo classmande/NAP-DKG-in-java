@@ -1,4 +1,4 @@
-package org.example.napdkg.cli;
+package org.example.napdkg.client;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -16,7 +16,8 @@ import org.example.napdkg.core.Share;
 import org.example.napdkg.core.SharingPhase;
 import org.example.napdkg.dto.EphemeralKeyDTO;
 import org.example.napdkg.util.DkgContext;
-import org.example.napdkg.util.EvaluationTools;
+import org.example.napdkg.util.DkgUtils;
+
 import org.example.napdkg.util.GroupGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -189,7 +190,7 @@ public class SmokeControlledSharingTest {
             BigInteger[] alpha = ctx.getAlphas();
             Share[] sh = new Share[n];
             for (int j = 1; j <= n; j++) {
-                BigInteger aij = EvaluationTools.evaluatePolynomial(fixedCoeffs, alpha[j], p);
+                BigInteger aij = DkgUtils.evaluatePolynomial(fixedCoeffs, alpha[j], p);
                 ECPoint Aij = G.multiply(aij).normalize();
                 sh[j - 1] = new Share(aij, Aij);
                 System.out.printf("Shamir share for alpha[%d] = %s%n", j, aij.toString(16));
@@ -233,7 +234,7 @@ public class SmokeControlledSharingTest {
             System.out.println("]");
 
             for (int j = 1; j <= n; j++) {
-                BigInteger eval = EvaluationTools.evaluatePolynomial(fixedCoeffs, alpha[j], p);
+                BigInteger eval = DkgUtils.evaluatePolynomial(fixedCoeffs, alpha[j], p);
                 BigInteger w = v[j - 1].multiply(eval).mod(p);
 
                 System.out.printf(
@@ -256,7 +257,7 @@ public class SmokeControlledSharingTest {
             // 5) optional check: sum(r[j]) mod p => ?
             BigInteger sumR = BigInteger.ZERO;
             for (int j = 1; j <= n; j++) {
-                BigInteger eval = EvaluationTools.evaluatePolynomial(fixedCoeffs, alpha[j], p);
+                BigInteger eval = DkgUtils.evaluatePolynomial(fixedCoeffs, alpha[j], p);
                 BigInteger rj = v[j - 1].multiply(eval).mod(p);
                 sumR = sumR.add(rj).mod(p);
             }

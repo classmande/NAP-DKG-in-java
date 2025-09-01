@@ -39,4 +39,9 @@ public final class Metrics {
     public EnumMap<Phase, Stat> snapshot() {
         return new EnumMap<>(byPhase);
     }
+
+    /** Optional convenience so you can write Metrics m = Metrics.zero(); */
+    public static Metrics zero() {
+        return new Metrics();
+    }
 }

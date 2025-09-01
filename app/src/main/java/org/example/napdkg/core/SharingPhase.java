@@ -63,7 +63,7 @@ public class SharingPhase {
     return pubs;
   }
 
-  public void runSharingAsDealer2() throws Exception {
+  public void runSharingAsDealer() throws Exception {
     BigInteger p = ctx.getOrder();
     ECPoint G = ctx.getGenerator();
 

@@ -3,17 +3,17 @@ import matplotlib.pyplot as plt
 
 # Construct the DataFrame with the provided benchmarking data (in ms)
 data = {
-    'n': [20, 40, 80],
-    'Setup_mean': [2717.513, 5806.647, 12417.154],
-    'Setup_stddev': [170.834, 166.744, 300.925],
-    'Sharing_mean': [664.300, 1786.328, 5784.113],
-    'Sharing_stddev': [109.939, 235.486, 703.209],
-    'Verification_mean': [35247.322, 134484.992, 642949.496],
-    'Verification_stddev': [442.954, 1116.911, 5222.365],
-    'Threshold_mean': [4442.225, 19277.953, 114115.873],
-    'Threshold_stddev': [442.780, 777.000, 4249.395],
-    'Total_mean': [43071.679, 161356.308, 775267.213],
-    'Total_stddev': [458.559, 1264.258, 8794.291]
+    'n': [10, 20, 40, 80],
+    'Setup_mean': [154.034, 311.528, 622.079, 1436.917],
+    'Setup_stddev': [149.554, 332.687, 458.327, 1072.635],
+    'Sharing_mean': [140.697, 194.402, 680.538, 2065.080],
+    'Sharing_stddev': [102.309, 148.899, 338.389, 606.580 ],
+    'Verification_mean': [1046.885, 2032.903, 13512.893, 75678.550],
+    'Verification_stddev': [190.663, 445.612, 749.090, 7730.025],
+    'Threshold_mean': [320.139, 430.186, 1455.428, 4437.709],
+    'Threshold_stddev': [152.322, 178.199, 324.257, 214.449 ],
+    'Total_mean': [1803.569, 3169.502, 17146.555, 84302.053 ],
+    'Total_stddev': [788.393, 1347.448, 1810.168, 7512.103]
 }
 df = pd.DataFrame(data)
 
@@ -31,7 +31,7 @@ for phase in phases:
         df[f'{phase}_mean'],
         yerr=df[f'{phase}_stddev'],
         fmt='-o',
-        capsize=5,
+        capsize=4,
         markersize=8,
         label=phase
     )

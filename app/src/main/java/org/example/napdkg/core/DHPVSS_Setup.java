@@ -3,7 +3,7 @@ package org.example.napdkg.core;
 import java.math.BigInteger;
 
 import org.example.napdkg.util.DkgContext;
-import org.example.napdkg.util.DhPvssUtils;
+import org.example.napdkg.util.DkgUtils;
 import org.example.napdkg.util.GroupGenerator;
 
 // Important!! Hard to understand - the derivation of the SCRAPE coefficients. Alert on mod-inversen and Reed-Solomon codes how they work! //
@@ -49,7 +49,7 @@ public class DHPVSS_Setup {
 
         // 4) Compute dual‐code weights v₁ … vₙ:
         // vᵢ = ∏_{j≠i} (α₀ − αⱼ)/(αᵢ − αⱼ) mod p
-        BigInteger[] vs = DhPvssUtils.deriveShrapeCoeffs(
+        BigInteger[] vs = DkgUtils.deriveShrapeCoeffs(
                 groupParams.getgroupOrd(),
                 alphas, // end index
                 n);

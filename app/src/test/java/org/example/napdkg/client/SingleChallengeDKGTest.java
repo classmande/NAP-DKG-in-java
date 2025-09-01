@@ -1,4 +1,4 @@
-package org.example.napdkg.cli;
+package org.example.napdkg.client;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;

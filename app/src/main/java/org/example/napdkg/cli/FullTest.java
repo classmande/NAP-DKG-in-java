@@ -1,5 +1,6 @@
 package org.example.napdkg.cli;
 
+import java.io.File;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,10 +13,12 @@ import org.example.napdkg.client.GsonFactory;
 import org.example.napdkg.client.HttpPbbClient;
 import org.example.napdkg.client.InMemoryPbbClient;
 import org.example.napdkg.client.InstrumentedPbbClient;
+import org.example.napdkg.client.NetShimPbb;
 import org.example.napdkg.client.PbbClient;
 import org.example.napdkg.client.TopicPoller;
 import org.example.napdkg.core.DHPVSS_Setup;
-import org.example.napdkg.core.NetShimPbb;
+import org.example.napdkg.core.Metrics;
+import org.example.napdkg.core.MetricsCsv;
 import org.example.napdkg.core.NizkDlProof;
 import org.example.napdkg.core.PartyContext;
 import org.example.napdkg.core.Phase;
@@ -30,6 +33,7 @@ import org.example.napdkg.dto.EphemeralKeyDTO;
 import org.example.napdkg.dto.ShareVerificationOutputDTO;
 import org.example.napdkg.dto.SharingOutputDTO;
 import org.example.napdkg.util.DkgContext;
+import org.example.napdkg.util.DkgRef;
 import org.example.napdkg.util.GroupGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,10 +43,26 @@ import com.google.gson.Gson;
 public class FullTest {
 
     // Iterations, number of participants, threshold and fa(secure parameter)
-    private static final int NUM_ITERATIONS = 1;
+    private static final int NUM_ITERATIONS = 2;
     private static final int n = 10;
     private static final int t = n / 2 + 1;
     private static final int fa = 1;
+
+    private static long propLong(String k, long d) {
+        try {
+            return Long.parseLong(System.getProperty(k, String.valueOf(d)));
+        } catch (Exception __) {
+            return d;
+        }
+    }
+
+    private static double propDouble(String k, double d) {
+        try {
+            return Double.parseDouble(System.getProperty(k, String.valueOf(d)));
+        } catch (Exception __) {
+            return d;
+        }
+    }
 
     private static class TimingResult {
         double setupMs, sharingMs, verificationMs, thresholdMs, totalMs;
@@ -54,14 +74,16 @@ public class FullTest {
 
         // Gson to convert Java Objects into JSON and vice versa
         Gson gson = GsonFactory.createGson();
+        final long seed = propLong("dkg.seed", 0L);
+        final long L = propLong("net.latencyMs", 0L);
+        final double J = propDouble("net.jitterPct", 0);
+
         // 1) Global timer
         long startAll = System.nanoTime();
-
-        InstrumentedPbbClient base = new InstrumentedPbbClient(raw, gson);
-
-        long L = Long.getLong("net.latencyMs", 10L);
-        double J = Double.parseDouble(System.getProperty("net.jitterPct", "2.0"));
-        PbbClient pbb = new NetShimPbb(base, L, J);
+        Metrics metrics = new Metrics();
+        File out = new File("bench.csv");
+        PbbClient shim = new NetShimPbb(raw, L, J);
+        InstrumentedPbbClient pbb = new InstrumentedPbbClient(shim, gson, metrics);
         // // // 2) Build PBB client (public ledger) (instrumented)????? Whats
         // instrumented
         // // // ?????
@@ -76,6 +98,9 @@ public class FullTest {
         ExecutorService executor = Executors.newFixedThreadPool(n);
         // For timing
         TimingResult result = new TimingResult();
+
+        DkgRef.resetForNewRun(); // ← clears baseline for this run
+        VerificationPhase.setDealerPoller(null);
         // —— Parallel clear old data ——
         List<Callable<Void>> clearTasks = new ArrayList<>();
         clearTasks.add(() -> {
@@ -154,11 +179,11 @@ public class FullTest {
             // Lambda/arrow function. This is a little function that will run later. So the
             // add is a callable void that will be added to tasks.
             // Here we add an instance a SharingPhase with P and t and
-            // dorunSharingAsDealer2() for that party P. And that is done for each party P
+            // dorunSharingAsDealer() for that party P. And that is done for each party P
             // in parties.
             for (PartyContext P : parties)
                 tasks.add(() -> {
-                    new SharingPhase(P, t).runSharingAsDealer2();
+                    new SharingPhase(P, t).runSharingAsDealer();
                     return null;
                 });
             executor.invokeAll(tasks);
@@ -278,9 +303,23 @@ public class FullTest {
 
         // executor.shutdown();
         executor.awaitTermination(1, TimeUnit.MINUTES);
-        System.out.println(base.prettySummary()); // or whatever your InstrumentedPbbClient exposes
-        return result;
+        System.out.println(pbb.prettySummary());
+        System.out.println(((NetShimPbb) shim).latencySummary());
 
+        try {
+            MetricsCsv.RunParams rp = new MetricsCsv.RunParams(
+                    n, t, fa, seed,
+                    L, J);
+            MetricsCsv.Timings tm = new MetricsCsv.Timings(
+                    result.setupMs, result.sharingMs, result.verificationMs, result.thresholdMs);
+
+            MetricsCsv.dump(out, rp, metrics, tm);
+
+            System.out.println("Wrote metrics CSV → " + out.getAbsolutePath());
+        } catch (Exception ex) {
+            System.err.println("Failed to write metrics CSV: " + ex);
+        }
+        return result;
     }
 
     public static void main(String[] args) throws Exception {
@@ -312,6 +351,7 @@ public class FullTest {
         String[] names = { "Setup", "Sharing", "Verification", "Threshold", "Total" };
         DecimalFormat df = new DecimalFormat("0.000");
         System.out.println("=== Summary (mean ± stddev) ===");
+        System.out.println("n = " + n + " t = " + t + " fa = " + fa + " iterations = " + NUM_ITERATIONS);
         for (int j = 0; j < 5; j++) {
             double mean = sum[j] / N;
             double var = (sq[j] - sum[j] * sum[j] / N) / (N - 1);

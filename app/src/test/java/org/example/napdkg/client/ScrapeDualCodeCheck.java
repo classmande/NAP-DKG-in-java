@@ -1,4 +1,4 @@
-package org.example.napdkg.util;
+package org.example.napdkg.client;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -6,6 +6,10 @@ import java.security.SecureRandom;
 import org.example.napdkg.core.DHPVSS_Setup;
 import org.example.napdkg.core.GShamirShareDKG;
 import org.example.napdkg.core.Share;
+import org.example.napdkg.util.DkgContext;
+import org.example.napdkg.util.DkgUtils;
+import org.example.napdkg.util.GroupGenerator;
+import org.example.napdkg.util.GroupGenerator.GroupParameters;
 
 public class ScrapeDualCodeCheck {
     public static void main(String[] args) {
@@ -33,10 +37,9 @@ public class ScrapeDualCodeCheck {
         // Shamir-share “s” among n parties
         GShamirShareDKG.ShamirSharingResult res = GShamirShareDKG.ShamirSharingResult.generateShares(ctx, s);
         Share[] shares = res.shares;
-        BigInteger[] coeffs = res.coeffs;
 
         // Now do the SCRAPE check as in your test
-        BigInteger[] v = DhPvssUtils.deriveShrapeCoeffs(p, alphas, n);
+        BigInteger[] v = DkgUtils.deriveShrapeCoeffs(p, alphas, n);
         for (int degree = 0; degree <= n - t - 1; degree++) {
             BigInteger sum = BigInteger.ZERO;
             for (int i = 1; i <= n; i++) {

@@ -30,7 +30,6 @@ public final class MetricsCsv {
                     String.valueOf(rp.n), String.valueOf(rp.t), String.valueOf(rp.fa),
                     String.valueOf(rp.seed),
                     String.valueOf(rp.latencyMs), String.valueOf(rp.jitterPct),
-                    String.valueOf(rp.bwKbps),
                     String.format("%.3f", tm.setupMs), String.format("%.3f", tm.sharingMs),
                     String.format("%.3f", tm.verificationMs), String.format("%.3f",
                             tm.thresholdMs),
@@ -53,16 +52,16 @@ public final class MetricsCsv {
     public static final class RunParams {
         public final int n, t, fa;
         public final long seed, latencyMs;
-        public final double jitterPct, bwKbps;
+        public final double jitterPct;
 
-        public RunParams(int n, int t, int fa, long seed, long latencyMs, double jitterPct, double bwKbps) {
+        public RunParams(int n, int t, int fa, long seed, long latencyMs, double jitterPct) {
             this.n = n;
             this.t = t;
             this.fa = fa;
             this.seed = seed;
             this.latencyMs = latencyMs;
             this.jitterPct = jitterPct;
-            this.bwKbps = bwKbps;
+
         }
     }
 

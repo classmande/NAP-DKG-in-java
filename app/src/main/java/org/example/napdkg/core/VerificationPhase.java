@@ -20,7 +20,6 @@ import org.example.napdkg.dto.SharingOutputDTO;
 import org.example.napdkg.util.DkgContext;
 import org.example.napdkg.util.DkgRef;
 import org.example.napdkg.util.DkgUtils;
-import org.example.napdkg.util.EvaluationTools;
 import org.example.napdkg.util.HashingTools;
 import org.example.napdkg.util.MaskedShareCHat;
 import org.slf4j.Logger;
@@ -46,20 +45,11 @@ public class VerificationPhase {
     private List<SharingOutput> Q1 = new ArrayList<>();
     private Map<Integer, ECPoint> Aij = new HashMap<>();
     private Map<Integer, BigInteger> aij = new HashMap<>();
-    private ECPoint trueGroupKey = null;
 
     // 2) setter
-    public void setTrueGroupKey(ECPoint trueGroupKey) {
-        this.trueGroupKey = trueGroupKey;
-    }
 
     public int getMe() {
         return me;
-    }
-
-    // 3) getter
-    public ECPoint getTrueGroupKey() {
-        return this.trueGroupKey;
     }
 
     public List<SharingOutput> getQ1() {
@@ -216,7 +206,7 @@ public class VerificationPhase {
 
         // Use a 0-based loop variable k for recipients; map to alpha[k+1]
         for (int k = 0; k < n; k++) {
-            BigInteger f = EvaluationTools.evaluatePolynomial(mStar, alpha[k + 1], p);
+            BigInteger f = DkgUtils.evaluatePolynomial(mStar, alpha[k + 1], p);
             BigInteger w = lambda[k].multiply(f).mod(p);
 
             // E_k and C_{j,k} must be in party-index order [0..n-1]

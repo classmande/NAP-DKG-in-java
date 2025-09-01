@@ -1,4 +1,4 @@
-package org.example.napdkg.cli;
+package org.example.napdkg.client;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -8,16 +8,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.example.napdkg.cli.FullTest;
 import org.example.napdkg.client.GsonFactory;
 import org.example.napdkg.client.HttpPbbClient;
 import org.example.napdkg.client.InMemoryPbbClient;
 import org.example.napdkg.client.InstrumentedPbbClient;
 import org.example.napdkg.client.PbbClient;
 import org.example.napdkg.core.DHPVSS_Setup;
-import org.example.napdkg.core.NetShimPbb;
 import org.example.napdkg.core.PartyContext;
-import org.example.napdkg.core.Phase;
-import org.example.napdkg.core.PhaseScope;
 import org.example.napdkg.core.SetupPhasePublisher;
 import org.example.napdkg.core.SetupPhaseWaiter;
 import org.example.napdkg.core.ShareVerificationPublish;
@@ -28,16 +26,17 @@ import org.example.napdkg.dto.EphemeralKeyDTO;
 import org.example.napdkg.dto.ShareVerificationOutputDTO;
 import org.example.napdkg.dto.SharingOutputDTO;
 import org.example.napdkg.util.DkgContext;
+import org.example.napdkg.util.DkgRef;
 import org.example.napdkg.util.GroupGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 
-public class PlainTest {
+public class SpeedTest {
 
     // Iterations, number of participants, threshold and fa(secure parameter)
-    private static final int NUM_ITERATIONS = 1;
+    private static final int NUM_ITERATIONS = 3;
     private static final int n = 10;
     private static final int t = n / 2 + 1;
     private static final int fa = 1;
@@ -71,6 +70,8 @@ public class PlainTest {
         ExecutorService executor = Executors.newFixedThreadPool(n);
         // For timing
         TimingResult result = new TimingResult();
+        DkgRef.resetForNewRun(); // ← clears baseline for this run
+        VerificationPhase.setDealerPoller(null);
         // —— Parallel clear old data ——
         List<Callable<Void>> clearTasks = new ArrayList<>();
         clearTasks.add(() -> {
@@ -126,11 +127,11 @@ public class PlainTest {
         // Lambda/arrow function. This is a little function that will run later. So the
         // add is a callable void that will be added to tasks.
         // Here we add an instance a SharingPhase with P and t and
-        // dorunSharingAsDealer2() for that party P. And that is done for each party P
+        // dorunSharingAsDealer() for that party P. And that is done for each party P
         // in parties.
         for (PartyContext P : parties)
             tasks.add(() -> {
-                new SharingPhase(P, t).runSharingAsDealer2();
+                new SharingPhase(P, t).runSharingAsDealer();
                 return null;
             });
         executor.invokeAll(tasks);

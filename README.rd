@@ -11,8 +11,7 @@
 - npx json-server --watch db.json --port 3003
 
 - Open new terminal
-In new terminal:
-COPY/PASTE this into termnial: 
+In new terminal, COPY/PASTE this:
 ./gradlew run --args="--n 10 --t 5 --fa 1" 
   -Dorg.slf4j.simpleLogger.defaultLogLevel=info
   

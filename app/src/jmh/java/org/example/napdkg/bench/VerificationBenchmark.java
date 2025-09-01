@@ -23,7 +23,7 @@ public class VerificationBenchmark {
             // SharingBenchmark).
             for (PartyContext P : state.parties) {
                 SharingPhase sp = new SharingPhase(P, state.t);
-                sp.runSharingAsDealer2();
+                sp.runSharingAsDealer();
             }
             // Wait until threshold reached
             List<SharingOutputDTO> all;

@@ -6,6 +6,34 @@
     "configurations": [
         {
             "type": "java",
+            "name": "JsonLowerBoundCheck",
+            "request": "launch",
+            "mainClass": "org.example.napdkg.cli.JsonLowerBoundCheck",
+            "projectName": "app"
+        },
+        {
+            "type": "java",
+            "name": "EncodingSanity",
+            "request": "launch",
+            "mainClass": "org.example.napdkg.cli.EncodingSanity",
+            "projectName": "app"
+        },
+        {
+            "type": "java",
+            "name": "SpeedTest",
+            "request": "launch",
+            "mainClass": "org.example.napdkg.cli.SpeedTest",
+            "projectName": "app"
+        },
+        {
+            "type": "java",
+            "name": "FullTest2",
+            "request": "launch",
+            "mainClass": "org.example.napdkg.cli.FullTest2",
+            "projectName": "app"
+        },
+        {
+            "type": "java",
             "name": "FullTest",
             "request": "launch",
             "mainClass": "org.example.napdkg.cli.FullTest",

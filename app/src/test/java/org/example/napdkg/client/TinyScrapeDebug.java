@@ -1,4 +1,4 @@
-package org.example.napdkg.util;
+package org.example.napdkg.client;
 
 import java.math.BigInteger;
 import java.util.Arrays;
