@@ -7,7 +7,7 @@
 ## Run everything
 ```bash
 - git clone https://github.com/classmande/NAP-DKG-in-java.git
-- cd NAP-DKG-in-java
+- cd to folder containing "app"
 - npx json-server --watch db.json --port 3003
 
 - Open new terminal
