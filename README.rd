@@ -14,14 +14,14 @@
 In a new terminal, COPY/PASTE this:
 ./gradlew run --args="--n 10 --t 5 --fa 1" 
   
-Run FullTest.java for 
+Run app/src/main/java/org/example/napdkg/cli/FullTest.java for 
 quick benchmark with N = 10 
 (Simulating a simple speed test of the whole protocol with (no jitter/latency) all Participants using Javas Threads 
 (allows a program to operate more efficiently by doing multiple things at the same time)).
 
 
 RUNNING WITH LATENCY AND JITTER: 
-- go to FullTest.java
+- go to app/src/main/java/org/example/napdkg/cli/FullTest.java
 - adjust the following lines in runOnce method:
   final long seed = propLong("dkg.seed", 0L);
         final long L = propLong("net.latencyMs", 0L);
