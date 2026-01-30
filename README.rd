@@ -1,3 +1,6 @@
+Magnus Mølgaard Andersen
+MSc Software Design
+
 # NAP-DKG (Java) – Reproducible Implementation
 
 This repository contains a Java implementation of the **optimistic version of NAP-DKG
